@@ -3054,6 +3054,7 @@ public class JavacParser implements Parser {
      */
     JCVariableDecl variableDeclaratorRest(int pos, JCModifiers mods, JCExpression type, Name name,
                                   boolean reqInit, Comment dc, boolean localDecl, boolean compound) {
+        boolean declaredUsingVar = false;
         type = bracketsOpt(type);
         JCExpression init = null;
         if (token.kind == EQ) {
@@ -3066,6 +3067,7 @@ public class JavacParser implements Parser {
         if (elemType.hasTag(IDENT)) {
             Name typeName = ((JCIdent)elemType).name;
             if (isRestrictedLocalVarTypeName(typeName, pos, !compound && localDecl)) {
+                declaredUsingVar = true;
                 if (compound) {
                     //error - 'var' in compound local var decl
                    reportSyntaxError(pos, Errors.VarNotAllowedCompound);
@@ -3082,7 +3084,7 @@ public class JavacParser implements Parser {
             }
         }
         JCVariableDecl result =
-            toP(F.at(pos).VarDef(mods, name, type, init));
+            toP(F.at(pos).VarDef(mods, name, type, init, declaredUsingVar));
         attach(result, dc);
         result.startPos = startPos;
         return result;
@@ -3162,7 +3164,8 @@ public class JavacParser implements Parser {
             log.error(token.pos, Errors.VarargsAndOldArraySyntax);
         }
         type = bracketsOpt(type);
-        return toP(F.at(pos).VarDef(mods, name, type, null));
+        return toP(F.at(pos).VarDef(mods, name, type, null,
+                type != null && type.hasTag(IDENT) && ((JCIdent)type).name == names.var));
     }
 
     /** Resources = Resource { ";" Resources }
